@@ -4,6 +4,7 @@ from enum import Enum
 from mesa.model import Model
 import random
 
+
 def new_uuid():
     # Generate a UUID
     unique_id = uuid.uuid4()
@@ -13,11 +14,13 @@ def new_uuid():
 
     return int_uuid
 
+
 class SEIR(Enum):
     SUSCEPTIBLE = 1
     EXPOSED = 2
     INFECTED = 3
     RECOVERED = 4
+
 
 class LIFE_STAGE(Enum):
     LARVAE = 1
@@ -31,20 +34,22 @@ class HumanAgent(mesa.Agent):
     is not recovered then it dies
     """
 
-    def __init__(self, unique_id, model, incubation_period: int, infection_period: int, 
-                 recovery_probability: float, seir: SEIR = SEIR.SUSCEPTIBLE):
+    def __init__(self, unique_id, model, incubation_period: int, infection_period: int,
+                 recovery_probability: float, suspectible_probability: float, seir: SEIR = SEIR.SUSCEPTIBLE):
         super().__init__(unique_id, model)
         self.incubation_period = incubation_period
         self.infection_period = infection_period
         self.recovery_probability = recovery_probability
+        self.suspectible_probability = suspectible_probability
         self.time_exposed = 0
         self.time_infected = 0
+        self.time_recovered = 0
         self.seir = seir
         self.type = "Human"
 
     def move(self):
         possible_steps = self.model.grid.get_neighborhood(
-        self.pos, moore=True, include_center=False)
+            self.pos, moore=True, include_center=False)
         new_position = self.random.choice(list(possible_steps))
         self.model.grid.move_agent(self, new_position)
 
@@ -66,6 +71,12 @@ class HumanAgent(mesa.Agent):
                 else:
                     self.die()
                     dead = True
+        elif self.seir == SEIR.RECOVERED:
+            if random.random() < self.suspectible_probability:
+                self.seir = SEIR.SUSCEPTIBLE
+                self.time_recovered = 0
+            else:
+                self.time_recovered += 1
         return dead
 
     def die(self):
@@ -76,7 +87,7 @@ class HumanAgent(mesa.Agent):
         if self.check_seir():
             return
         self.move()
-    
+
 
 class MosquitoAgent(mesa.Agent):
     """
@@ -96,7 +107,8 @@ class MosquitoAgent(mesa.Agent):
     
     """
 
-    def __init__(self, unique_id, model, life_time: int, incubation_period: int, larvae_period: int, probability_of_exposition:float,
+    def __init__(self, unique_id, model, life_time: int, incubation_period: int, larvae_period: int,
+                 probability_of_exposition: float,
                  life_stage: LIFE_STAGE = LIFE_STAGE.ADULT, seir: SEIR = SEIR.SUSCEPTIBLE):
         super().__init__(unique_id, model)
         if life_stage == LIFE_STAGE.ADULT:
@@ -116,7 +128,7 @@ class MosquitoAgent(mesa.Agent):
     def move(self):
         if self.life_stage == LIFE_STAGE.ADULT:
             possible_steps = self.model.grid.get_neighborhood(
-            self.pos, moore=True, include_center=False)
+                self.pos, moore=True, include_center=False)
             new_position = self.random.choice(possible_steps)
             self.model.grid.move_agent(self, new_position)
 
@@ -152,7 +164,8 @@ class MosquitoAgent(mesa.Agent):
     def lay_eggs(self):
         number_of_eggs = random.randint(10, 20)
         for _ in range(number_of_eggs):
-            a = MosquitoAgent(new_uuid(), self.model, life_time=self.life_time, incubation_period=self.incubation_period, 
+            a = MosquitoAgent(new_uuid(), self.model, life_time=self.life_time,
+                              incubation_period=self.incubation_period,
                               larvae_period=self.incubation_period, probability_of_exposition=self.incubation_period,
                               life_stage=LIFE_STAGE.LARVAE, seir=self.seir)
             self.model.schedule.add(a)
@@ -160,7 +173,6 @@ class MosquitoAgent(mesa.Agent):
             x = self.random.randrange(self.model.grid.width)
             y = self.random.randrange(self.model.grid.height)
             self.model.grid.place_agent(a, self.pos)
-        
 
     def bite_or_eggs(self):
         cellmates = self.model.grid.get_cell_list_contents([self.pos])
@@ -216,7 +228,7 @@ class MosquitoAgent(mesa.Agent):
                 dead_or_repelled = True
                 self.move()
         return dead_or_repelled
-            
+
     def step(self):
         self.current_life_step += 1
         if self.check_life_stage():
@@ -237,13 +249,14 @@ class HouseAgent(mesa.Agent):
         self.mosquito_net = mosquito_net
         self.mosquito_spray = mosquito_spray
         self.type = "House"
-        
+
     def step(self):
         pass
 
 
 class WaterAgent(mesa.Agent):
     """Agent representing a water source. It doesn't move and doesn't have any extra properties"""
+
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
         self.type = "Water"

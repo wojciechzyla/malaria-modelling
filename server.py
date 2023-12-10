@@ -42,7 +42,7 @@ model_params = {
     "ponds": mesa.visualization.Slider("Initial Ponds", 5, 1, 50), 
     "percentage_of_infected_humans": 0.5, "human_incubation_period": 20, "human_infection_period": 30,
     "human_recovery_probability": 0.3, "mosquito_incubation_period": 15, "mosquito_life_time": 100,
-    "mosquito_larvae_period": 20, "mosquito_probability_of_exposition": 0.2}
+    "mosquito_larvae_period": 20, "mosquito_probability_of_exposition": 0.2, "human_suspectible_probability": 0.1}
 
 grid = mesa.visualization.CanvasGrid(agents_portrayal, 10, 10, 500, 500)
 chart_component = mesa.visualization.ChartModule([
