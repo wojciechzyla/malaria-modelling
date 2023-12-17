@@ -72,9 +72,8 @@ class MalariaInfectionModel(mesa.Model):
                 x = self.random.randrange(self.grid.width)
                 y = self.random.randrange(self.grid.height)
                 cellmates = self.grid.get_cell_list_contents([(x, y)])
-                for c in cellmates:
-                    if c.type != "House" and c.type != "Water":
-                        collision_with_house_or_water = False
+                if all(c.type != "House" and c.type != "Water" for c in cellmates):
+                    collision_with_house_or_water = False
 
             self.grid.place_agent(a, (x, y))
             self.schedule.add(a)
@@ -89,9 +88,8 @@ class MalariaInfectionModel(mesa.Model):
                 x = self.random.randrange(self.grid.width)
                 y = self.random.randrange(self.grid.height)
                 cellmates = self.grid.get_cell_list_contents([(x, y)])
-                for c in cellmates:
-                    if c.type != "House" and c.type != "Water":
-                        collision_with_house_or_water = False
+                if all(c.type != "House" and c.type != "Water" for c in cellmates):
+                    collision_with_house_or_water = False
 
             self.grid.place_agent(a, (x, y))
             self.schedule.add(a)
