@@ -12,11 +12,12 @@ class MalariaInfectionModel(mesa.Model):
 
     def __init__(self, width, height, initial_mosquitos, initial_humans, houses, ponds, percentage_of_infected_humans,
                  human_incubation_period, human_infection_period, human_recovery_probability,
-                 mosquito_incubation_period, mosquito_life_time, mosquito_larvae_period,
-                 mosquito_probability_of_exposition, human_suspectible_probability):
+                 mosquito_incubation_period, mosquito_life_time, mosquito_larvae_period,human_suspectible_probability):
 
         self.schedule = mesa.time.RandomActivation(self)
         self.grid = mesa.space.MultiGrid(width, height, True)
+        self.day_count = 0  # number of day
+        self.day_step = 0  # each day has 24 simulation steps
 
         self.datacollector = mesa.DataCollector(
             {
@@ -54,7 +55,6 @@ class MalariaInfectionModel(mesa.Model):
             a = MosquitoAgent(new_uuid(), self, life_time=mosquito_life_time,
                               incubation_period=mosquito_incubation_period,
                               larvae_period=mosquito_larvae_period,
-                              probability_of_exposition=mosquito_probability_of_exposition,
                               life_stage=random.choice(list(LIFE_STAGE)), seir=SEIR.SUSCEPTIBLE)
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
@@ -97,3 +97,7 @@ class MalariaInfectionModel(mesa.Model):
     def step(self):
         self.schedule.step()
         self.datacollector.collect(self)
+        self.day_step += 1
+        if self.day_step == 24:
+            self.day_step = 0
+            self.day_count += 1

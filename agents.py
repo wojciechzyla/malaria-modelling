@@ -3,6 +3,7 @@ import uuid
 from enum import Enum
 from mesa.model import Model
 import random
+from copy import copy
 
 
 def new_uuid():
@@ -44,6 +45,7 @@ class HumanAgent(mesa.Agent):
         self.time_exposed = 0
         self.time_infected = 0
         self.time_recovered = 0
+        self.prev_day = copy(model.day_count)
         self.seir = seir
         self.type = "Human"
 
@@ -57,13 +59,15 @@ class HumanAgent(mesa.Agent):
         dead = False
         if self.seir == SEIR.EXPOSED:
             if self.time_exposed < self.incubation_period:
-                self.time_exposed += 1
+                if self.prev_day != self.model.day_count:
+                    self.time_exposed += 1
             else:
                 self.seir = SEIR.INFECTED
                 self.time_exposed = 0
         elif self.seir == SEIR.INFECTED:
             if self.time_infected < self.infection_period:
-                self.time_infected += 1
+                if self.prev_day != self.model.day_count:
+                    self.time_infected += 1
             else:
                 if random.random() < self.recovery_probability:
                     self.time_infected = 0
@@ -76,7 +80,8 @@ class HumanAgent(mesa.Agent):
                 self.seir = SEIR.SUSCEPTIBLE
                 self.time_recovered = 0
             else:
-                self.time_recovered += 1
+                if self.prev_day != self.model.day_count:
+                    self.time_recovered += 1
         return dead
 
     def die(self):
@@ -87,6 +92,7 @@ class HumanAgent(mesa.Agent):
         if self.check_seir():
             return
         self.move()
+        self.prev_day = copy(self.model.day_count)
 
 
 class MosquitoAgent(mesa.Agent):
@@ -108,7 +114,6 @@ class MosquitoAgent(mesa.Agent):
     """
 
     def __init__(self, unique_id, model, life_time: int, incubation_period: int, larvae_period: int,
-                 probability_of_exposition: float,
                  life_stage: LIFE_STAGE = LIFE_STAGE.ADULT, seir: SEIR = SEIR.SUSCEPTIBLE):
         super().__init__(unique_id, model)
         if life_stage == LIFE_STAGE.ADULT:
@@ -122,8 +127,9 @@ class MosquitoAgent(mesa.Agent):
         self.life_stage = life_stage
         self.seir = seir
         self.type = "Mosquito"
-        self.probability_of_exposition = probability_of_exposition
+        self.probability_of_exposition = 0.02
         self.looking_for_water = False
+        self.prev_day = copy(model.day_count)
 
     def move(self):
         if self.life_stage == LIFE_STAGE.ADULT:
@@ -156,7 +162,8 @@ class MosquitoAgent(mesa.Agent):
     def check_seir(self):
         if self.seir == SEIR.EXPOSED:
             if self.time_exposed < self.incubation_period:
-                self.time_exposed += 1
+                if self.prev_day != self.model.day_count:
+                    self.time_exposed += 1
             else:
                 self.seir = SEIR.INFECTED
                 self.time_exposed = 0
@@ -166,7 +173,7 @@ class MosquitoAgent(mesa.Agent):
         for _ in range(number_of_eggs):
             a = MosquitoAgent(new_uuid(), self.model, life_time=self.life_time,
                               incubation_period=self.incubation_period,
-                              larvae_period=self.incubation_period, probability_of_exposition=self.incubation_period,
+                              larvae_period=self.incubation_period,
                               life_stage=LIFE_STAGE.LARVAE, seir=self.seir)
             self.model.schedule.add(a)
             # Add the agent to a random grid cell
@@ -230,7 +237,8 @@ class MosquitoAgent(mesa.Agent):
         return dead_or_repelled
 
     def step(self):
-        self.current_life_step += 1
+        if self.prev_day != self.model.day_count:
+            self.current_life_step += 1
         if self.check_life_stage():
             return
         self.check_seir()
@@ -239,6 +247,7 @@ class MosquitoAgent(mesa.Agent):
             return
         self.bite_or_eggs()
         self.check_house_spray()
+        self.prev_day = copy(self.model.day_count)
 
 
 class HouseAgent(mesa.Agent):
