@@ -114,6 +114,7 @@ class MosquitoAgent(mesa.Agent):
     """
 
     def __init__(self, unique_id, model, life_time: int, incubation_period: int, larvae_period: int,
+                 daily_steps_available: int,
                  life_stage: LIFE_STAGE = LIFE_STAGE.ADULT, seir: SEIR = SEIR.SUSCEPTIBLE):
         super().__init__(unique_id, model)
         if life_stage == LIFE_STAGE.ADULT:
@@ -122,9 +123,13 @@ class MosquitoAgent(mesa.Agent):
             self.current_life_step = 0
         self.life_time = life_time
         self.time_exposed = 0
+        self.daily_steps_available = daily_steps_available
+        self.remaining_steps = daily_steps_available
         self.incubation_period = incubation_period
         self.larvae_period = larvae_period
         self.life_stage = life_stage
+        self.daily_max_eggs_laied = 10
+        self.eggs_laied=0
         self.seir = seir
         self.type = "Mosquito"
         self.probability_of_exposition = 0.02
@@ -132,11 +137,18 @@ class MosquitoAgent(mesa.Agent):
         self.prev_day = copy(model.day_count)
 
     def move(self):
-        if self.life_stage == LIFE_STAGE.ADULT:
+        if self.life_stage == LIFE_STAGE.ADULT and self.remaining_steps > 0:
             possible_steps = self.model.grid.get_neighborhood(
                 self.pos, moore=True, include_center=False)
             new_position = self.random.choice(possible_steps)
+            self.remaining_steps -= 1
             self.model.grid.move_agent(self, new_position)
+
+    def reset_steps(self):
+        self.remaining_steps = self.daily_steps_available
+
+    def reset_eggs(self):
+        self.eggs_laied = 0
 
     def bite(self, human: HumanAgent):
         if human.seir == SEIR.INFECTED and self.seir == SEIR.SUSCEPTIBLE:
@@ -169,13 +181,16 @@ class MosquitoAgent(mesa.Agent):
                 self.time_exposed = 0
 
     def lay_eggs(self):
-        number_of_eggs = random.randint(10, 20)
+        number_of_eggs = random.randint(1, self.daily_max_eggs_laied)
         for _ in range(number_of_eggs):
+            if self.eggs_laied >= self.daily_max_eggs_laied:
+                break
             a = MosquitoAgent(new_uuid(), self.model, life_time=self.life_time,
                               incubation_period=self.incubation_period,
-                              larvae_period=self.incubation_period,
+                              larvae_period=self.incubation_period, daily_steps_available=self.daily_steps_available,
                               life_stage=LIFE_STAGE.LARVAE, seir=self.seir)
             self.model.schedule.add(a)
+            self.eggs_laied += 1
             # Add the agent to a random grid cell
             x = self.random.randrange(self.model.grid.width)
             y = self.random.randrange(self.model.grid.height)
@@ -247,7 +262,6 @@ class MosquitoAgent(mesa.Agent):
             return
         self.bite_or_eggs()
         self.check_house_spray()
-        self.prev_day = copy(self.model.day_count)
 
 
 class HouseAgent(mesa.Agent):

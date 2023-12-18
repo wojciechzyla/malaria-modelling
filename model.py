@@ -1,10 +1,8 @@
-from typing import Any
-import mesa
 import random
+
+import mesa
+
 from agents import new_uuid, SEIR, HumanAgent, MosquitoAgent, WaterAgent, HouseAgent, LIFE_STAGE
-from mesa.space import MultiGrid
-from mesa.time import RandomActivation
-from mesa.datacollection import DataCollector
 
 
 class MalariaInfectionModel(mesa.Model):
@@ -12,7 +10,7 @@ class MalariaInfectionModel(mesa.Model):
 
     def __init__(self, width, height, initial_mosquitos, initial_humans, houses, ponds, percentage_of_infected_humans,
                  human_incubation_period, human_infection_period, human_recovery_probability,
-                 mosquito_incubation_period, mosquito_life_time, mosquito_larvae_period,human_suspectible_probability):
+                 mosquito_incubation_period, mosquito_life_time, mosquito_larvae_period,human_suspectible_probability, mosquito_daily_steps_available):
 
         self.schedule = mesa.time.RandomActivation(self)
         self.grid = mesa.space.MultiGrid(width, height, True)
@@ -54,6 +52,7 @@ class MalariaInfectionModel(mesa.Model):
         for _ in range(initial_mosquitos):
             a = MosquitoAgent(new_uuid(), self, life_time=mosquito_life_time,
                               incubation_period=mosquito_incubation_period,
+                              daily_steps_available=mosquito_daily_steps_available,
                               larvae_period=mosquito_larvae_period,
                               life_stage=random.choice(list(LIFE_STAGE)), seir=SEIR.SUSCEPTIBLE)
             # Add the agent to a random grid cell
@@ -101,3 +100,8 @@ class MalariaInfectionModel(mesa.Model):
         if self.day_step == 24:
             self.day_step = 0
             self.day_count += 1
+            for i, agent in enumerate(self.schedule.agents):
+                if agent.type == "Mosquito":
+                    agent.reset_steps()
+                    agent.reset_eggs()
+
