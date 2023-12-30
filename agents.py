@@ -40,12 +40,16 @@ class HumanAgent(mesa.Agent):
         super().__init__(unique_id, model)
         self.incubation_period = incubation_period
         self.infection_period = infection_period
-        self.recovery_probability = recovery_probability
-        self.suspectible_probability = suspectible_probability
+        #self.recovery_probability = recovery_probability
+        self.recovery_probability = 0.037
+        #self.suspectible_probability = suspectible_probabilit
+        self.suspectible_probability = 0.01
         self.time_exposed = 0
         self.time_infected = 0
         self.time_recovered = 0
         self.prev_day = copy(model.day_count)
+        self.day_of_infection = None if seir == SEIR.SUSCEPTIBLE or SEIR.RECOVERED else copy(model.day_count)
+        self.day_of_recovery = None if seir != SEIR.RECOVERED else copy(model.day_count)
         self.seir = seir
         self.type = "Human"
 
@@ -64,19 +68,21 @@ class HumanAgent(mesa.Agent):
             else:
                 self.seir = SEIR.INFECTED
                 self.time_exposed = 0
+                self.day_of_infection = copy(self.model.day_count)
         elif self.seir == SEIR.INFECTED:
             if self.time_infected < self.infection_period:
                 if self.prev_day != self.model.day_count:
                     self.time_infected += 1
             else:
-                if random.random() < self.recovery_probability:
+                if random.random() < self.recovery_probability*(self.model.day_count-self.day_of_infection):
                     self.time_infected = 0
                     self.seir = SEIR.RECOVERED
+                    self.day_of_recovery = copy(self.model.day_count)
                 else:
                     self.die()
                     dead = True
         elif self.seir == SEIR.RECOVERED:
-            if random.random() < self.suspectible_probability:
+            if random.random() < self.suspectible_probability*(self.model.day_count-self.day_of_recovery):
                 self.seir = SEIR.SUSCEPTIBLE
                 self.time_recovered = 0
             else:
@@ -114,7 +120,7 @@ class MosquitoAgent(mesa.Agent):
     """
 
     def __init__(self, unique_id, model, life_time: int, incubation_period: int, larvae_period: int,
-                 daily_steps_available: int,
+                 daily_steps_available: int, probability_of_infecting_human:float,
                  life_stage: LIFE_STAGE = LIFE_STAGE.ADULT, seir: SEIR = SEIR.SUSCEPTIBLE):
         super().__init__(unique_id, model)
         if life_stage == LIFE_STAGE.ADULT:
@@ -129,10 +135,11 @@ class MosquitoAgent(mesa.Agent):
         self.larvae_period = larvae_period
         self.life_stage = life_stage
         self.daily_max_eggs_laied = 10
-        self.eggs_laied=0
+        self.eggs_laied = 0
         self.seir = seir
         self.type = "Mosquito"
         self.probability_of_exposition = 0.02
+        self.probability_of_infecting_human = probability_of_infecting_human
         self.looking_for_water = False
         self.prev_day = copy(model.day_count)
 
@@ -155,7 +162,8 @@ class MosquitoAgent(mesa.Agent):
             if random.random() < self.probability_of_exposition:
                 self.seir = SEIR.EXPOSED
         elif self.seir == SEIR.INFECTED and human.seir == SEIR.SUSCEPTIBLE:
-            human.seir = SEIR.EXPOSED
+            if random.random() < self.probability_of_infecting_human:
+                human.seir = SEIR.EXPOSED
 
     def die(self):
         self.model.schedule.remove(self)
@@ -188,7 +196,8 @@ class MosquitoAgent(mesa.Agent):
             a = MosquitoAgent(new_uuid(), self.model, life_time=self.life_time,
                               incubation_period=self.incubation_period,
                               larvae_period=self.incubation_period, daily_steps_available=self.daily_steps_available,
-                              life_stage=LIFE_STAGE.LARVAE, seir=self.seir)
+                              life_stage=LIFE_STAGE.LARVAE, seir=self.seir,
+                              probability_of_infecting_human=self.probability_of_infecting_human)
             self.model.schedule.add(a)
             self.eggs_laied += 1
             # Add the agent to a random grid cell
