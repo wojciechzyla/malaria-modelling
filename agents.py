@@ -35,15 +35,13 @@ class HumanAgent(mesa.Agent):
     is not recovered then it dies
     """
 
-    def __init__(self, unique_id, model, incubation_period: int, infection_period: int,
-                 recovery_probability: float, susceptible_probability: float, seir: SEIR = SEIR.SUSCEPTIBLE):
+    def __init__(self, unique_id, model, seir: SEIR = SEIR.SUSCEPTIBLE, **kwargs):
         super().__init__(unique_id, model)
-        self.incubation_period = incubation_period
-        self.infection_period = infection_period
-        #self.recovery_probability = recovery_probability
-        self.recovery_probability = 0.037
-        #self.suspectible_probability = suspectible_probabilit
-        self.susceptible_probability = 0.01
+        self.incubation_period = random.randint(kwargs["human_incubation_period_range"][0],
+                                                kwargs["human_incubation_period_range"][1])
+        self.recovery_probability = kwargs["human_recovery_probability_multiplier"]
+        self.susceptible_probability = kwargs["human_susceptible_probability_multiplier"]
+
         self.time_exposed = 0
         self.time_infected = 0
         self.time_recovered = 0
@@ -69,20 +67,28 @@ class HumanAgent(mesa.Agent):
                 self.seir = SEIR.INFECTED
                 self.time_exposed = 0
                 self.day_of_infection = copy(self.model.day_count)
+                self.time_infected = 0
         elif self.seir == SEIR.INFECTED:
-            if self.time_infected < self.infection_period:
-                if self.prev_day != self.model.day_count:
-                    self.time_infected += 1
-            else:
-                if random.random() < self.recovery_probability*(self.model.day_count-self.day_of_infection):
+            # if self.time_infected < self.infection_period:
+            #     if self.prev_day != self.model.day_count:
+            #         self.time_infected += 1
+            # else:
+            #     if random.random() < self.recovery_probability * (self.model.day_count - self.day_of_infection):
+            #         self.time_infected = 0
+            #         self.seir = SEIR.RECOVERED
+            #         self.day_of_recovery = copy(self.model.day_count)
+            #     else:
+            #         self.die()
+            #         dead = True
+            if self.prev_day != self.model.day_count:
+                self.time_infected += 1
+                if random.random() < self.recovery_probability * self.time_infected:
                     self.time_infected = 0
+                    self.time_recovered = 0
                     self.seir = SEIR.RECOVERED
                     self.day_of_recovery = copy(self.model.day_count)
-                else:
-                    self.die()
-                    dead = True
         elif self.seir == SEIR.RECOVERED:
-            if random.random() < self.susceptible_probability*(self.model.day_count-self.day_of_recovery):
+            if random.random() < self.susceptible_probability * self.time_recovered:
                 self.seir = SEIR.SUSCEPTIBLE
                 self.time_recovered = 0
             else:
@@ -108,7 +114,7 @@ class MosquitoAgent(mesa.Agent):
     If self.looking_for_water is equal to False, then mosquito is looking for a human. When mosquito is looking for a human it moves one cell
     in random direction until it lands in one cell with a human. After biting a human, mosquito changes self.looking_for_water to True.
     Now it is moving in random direction to find a water source and it doesn't care about humans.
-    
+
     If it finds a cell with other agent of type "Water" it creates some number of new LARVAE mosquitos in this cell. After
     creating new larves, mosquito changes self.looking_for_water again to False and again searches for human. 
 
@@ -116,30 +122,44 @@ class MosquitoAgent(mesa.Agent):
     (if mosquito is repelled it doesn't die and doesn't bite, just continues to move). If it wasn't repelled then there is a chance of
     killing a mosquito. If mosquito both isn't repelled and doesn't die, then it can still bite a human if the human is also present in 
     this cell
-    
+
     """
 
-    def __init__(self, unique_id, model, life_time: int, incubation_period: int, larvae_period: int,
-                 daily_steps_available: int, probability_of_infecting_human:float,
-                 life_stage: LIFE_STAGE = LIFE_STAGE.ADULT, seir: SEIR = SEIR.SUSCEPTIBLE):
+    def __init__(self, unique_id, model, life_stage: LIFE_STAGE = LIFE_STAGE.ADULT, seir: SEIR = SEIR.SUSCEPTIBLE,
+                 **kwargs):
         super().__init__(unique_id, model)
+        self.kwargs_from_init = kwargs # safe kwargs in order to pass them while creating eggs
+        # Life stages
+        self.life_stage = life_stage
+        self.larvae_period = random.randint(kwargs["mosquito_larvae_period_range"][0],
+                                            kwargs["mosquito_larvae_period_range"][1])
         if life_stage == LIFE_STAGE.ADULT:
-            self.current_life_step = larvae_period
+            self.current_life_step = self.larvae_period
         else:
             self.current_life_step = 0
-        self.life_time = life_time
+        self.life_time = self.larvae_period + random.randint(kwargs["mosquito_adult_life_range"][0],
+                                                             kwargs["mosquito_adult_life_range"][1])
+
+        # Reproduction
+        self.daily_min_eggs_laid = kwargs["mosquito_daily_min_eggs_laid"]
+        self.daily_max_eggs_laid = kwargs["mosquito_daily_max_eggs_laid"]
+        self.lifetime_max_eggs = kwargs["mosquito_lifetime_max_eggs"]
+        self.eggs_laid_during_day = 0
+        self.total_eggs_laid = 0
+
+        # Incubation and infections
         self.time_exposed = 0
-        self.daily_steps_available = daily_steps_available
-        self.remaining_steps = daily_steps_available
-        self.incubation_period = incubation_period
-        self.larvae_period = larvae_period
-        self.life_stage = life_stage
-        self.daily_max_eggs_laied = 10
-        self.eggs_laied = 0
         self.seir = seir
+        self.incubation_period = random.randint(kwargs["mosquito_incubation_period_range"][0],
+                                                kwargs["mosquito_incubation_period_range"][1])
+        self.probability_of_exposition = kwargs["mosquito_probability_of_exposition"]
+        self.probability_of_infecting_human = kwargs["mosquito_probability_of_infecting_human"]
+
+        # Movement
+        self.daily_steps_available = kwargs["mosquito_daily_steps"]
+        self.remaining_steps = kwargs["mosquito_daily_steps"]
+
         self.type = "Mosquito"
-        self.probability_of_exposition = 0.02
-        self.probability_of_infecting_human = probability_of_infecting_human
         self.looking_for_water = False
         self.prev_day = copy(model.day_count)
 
@@ -155,29 +175,33 @@ class MosquitoAgent(mesa.Agent):
         self.remaining_steps = self.daily_steps_available
 
     def reset_eggs(self):
-        self.eggs_laied = 0
+        self.eggs_laid_during_day = 0
 
     def bite(self, human: HumanAgent):
+        txt = f"before bite m={self.seir}, h={human.seir}"
         if human.seir == SEIR.INFECTED and self.seir == SEIR.SUSCEPTIBLE:
             if random.random() < self.probability_of_exposition:
                 self.seir = SEIR.EXPOSED
         elif self.seir == SEIR.INFECTED and human.seir == SEIR.SUSCEPTIBLE:
             if random.random() < self.probability_of_infecting_human:
                 human.seir = SEIR.EXPOSED
+        txt += f" | after bite m={self.seir}, h={human.seir}"
 
     def die(self):
         self.model.schedule.remove(self)
         self.model.grid.remove_agent(self)
 
     def check_life_stage(self):
-        dead = False
-        if self.life_stage == LIFE_STAGE.LARVAE and self.current_life_step >= self.larvae_period:
+        dead_or_larvae = False
+        if self.life_stage == LIFE_STAGE.LARVAE and self.current_life_step < self.larvae_period:
+            dead_or_larvae = True
+        elif self.life_stage == LIFE_STAGE.LARVAE and self.current_life_step >= self.larvae_period:
             # change from larvae to adult
             self.life_stage = LIFE_STAGE.ADULT
         elif self.life_stage == LIFE_STAGE.ADULT and self.current_life_step >= self.life_time:
             self.die()
-            dead = True
-        return dead
+            dead_or_larvae = True
+        return dead_or_larvae
 
     def check_seir(self):
         if self.seir == SEIR.EXPOSED:
@@ -189,25 +213,19 @@ class MosquitoAgent(mesa.Agent):
                 self.time_exposed = 0
 
     def lay_eggs(self):
-        number_of_eggs = random.randint(1, self.daily_max_eggs_laied)
+        number_of_eggs = random.randint(self.daily_min_eggs_laid, self.daily_max_eggs_laid)
         for _ in range(number_of_eggs):
-            if self.eggs_laied >= self.daily_max_eggs_laied:
+            if self.eggs_laid_during_day >= self.daily_max_eggs_laid:
                 break
-            a = MosquitoAgent(new_uuid(), self.model, life_time=self.life_time,
-                              incubation_period=self.incubation_period,
-                              larvae_period=self.incubation_period, daily_steps_available=self.daily_steps_available,
-                              life_stage=LIFE_STAGE.LARVAE, seir=self.seir,
-                              probability_of_infecting_human=self.probability_of_infecting_human)
-            self.model.schedule.add(a)
-            self.eggs_laied += 1
-            # Add the agent to a random grid cell
-            x = self.random.randrange(self.model.grid.width)
-            y = self.random.randrange(self.model.grid.height)
-            self.model.grid.place_agent(a, self.pos)
+            a = MosquitoAgent(new_uuid(), self.model, life_stage=LIFE_STAGE.LARVAE,
+                              seir=self.seir, **self.kwargs_from_init)
+            self.eggs_laid_during_day += 1
+            self.total_eggs_laid += 1
+            self.model.new_mosquitos.append((a, self.pos))
 
     def bite_or_eggs(self):
         cellmates = self.model.grid.get_cell_list_contents([self.pos])
-        if self.looking_for_water:
+        if self.looking_for_water and self.total_eggs_laid < self.lifetime_max_eggs:
             for c in cellmates:
                 if c.type == "Water":
                     self.lay_eggs()
@@ -217,7 +235,8 @@ class MosquitoAgent(mesa.Agent):
             for c in cellmates:
                 if c.type == "Human":
                     self.bite(c)
-                    self.looking_for_water = True
+                    if self.total_eggs_laid < self.lifetime_max_eggs:
+                        self.looking_for_water = True
                     break
 
     def check_house_net(self):
@@ -263,14 +282,19 @@ class MosquitoAgent(mesa.Agent):
     def step(self):
         if self.prev_day != self.model.day_count:
             self.current_life_step += 1
+            self.reset_steps()
+            self.reset_eggs()
         if self.check_life_stage():
+            self.prev_day = copy(self.model.day_count)
             return
         self.check_seir()
         self.move()
         if self.check_house_net():
+            self.prev_day = copy(self.model.day_count)
             return
         self.bite_or_eggs()
         self.check_house_spray()
+        self.prev_day = copy(self.model.day_count)
 
 
 class HouseAgent(mesa.Agent):
