@@ -35,7 +35,7 @@ def agents_portrayal(agent):
 
 model_params = {
     "title": mesa.visualization.StaticText("Parameters:"),
-    "width": 10, "height": 10, 
+    "width": 2, "height": 2, 
     "initial_mosquitos": mesa.visualization.Slider("Initial Mosquitos", 5, 1, 200), 
     "initial_humans": mesa.visualization.Slider("Initial Humans", 5, 1, 200),  
     "houses": mesa.visualization.Slider("Initial Houses", 3, 1, 50), 

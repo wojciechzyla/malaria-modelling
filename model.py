@@ -12,7 +12,7 @@ class MalariaInfectionModel(mesa.Model):
                  human_incubation_period, human_infection_period, human_recovery_probability,
                  mosquito_incubation_period, mosquito_life_time, mosquito_larvae_period,
                  probability_of_infecting_human,
-                 human_suspectible_probability, mosquito_daily_steps_available):
+                 human_susceptible_probability, mosquito_daily_steps_available):
 
         self.schedule = mesa.time.RandomActivation(self)
         self.grid = mesa.space.MultiGrid(width, height, True)
@@ -33,7 +33,7 @@ class MalariaInfectionModel(mesa.Model):
             a = HumanAgent(new_uuid(), self, incubation_period=human_incubation_period,
                            infection_period=human_infection_period,
                            recovery_probability=human_recovery_probability,
-                           suspectible_probability=human_suspectible_probability, seir=SEIR.INFECTED)
+                           susceptible_probability=human_susceptible_probability, seir=SEIR.INFECTED)
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
@@ -43,7 +43,7 @@ class MalariaInfectionModel(mesa.Model):
             a = HumanAgent(new_uuid(), self, incubation_period=human_incubation_period,
                            infection_period=human_infection_period,
                            recovery_probability=human_recovery_probability,
-                           suspectible_probability=human_suspectible_probability, seir=SEIR.SUSCEPTIBLE)
+                           susceptible_probability=human_susceptible_probability, seir=SEIR.SUSCEPTIBLE)
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)

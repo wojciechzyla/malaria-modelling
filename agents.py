@@ -36,19 +36,19 @@ class HumanAgent(mesa.Agent):
     """
 
     def __init__(self, unique_id, model, incubation_period: int, infection_period: int,
-                 recovery_probability: float, suspectible_probability: float, seir: SEIR = SEIR.SUSCEPTIBLE):
+                 recovery_probability: float, susceptible_probability: float, seir: SEIR = SEIR.SUSCEPTIBLE):
         super().__init__(unique_id, model)
         self.incubation_period = incubation_period
         self.infection_period = infection_period
         #self.recovery_probability = recovery_probability
         self.recovery_probability = 0.037
         #self.suspectible_probability = suspectible_probabilit
-        self.suspectible_probability = 0.01
+        self.susceptible_probability = 0.01
         self.time_exposed = 0
         self.time_infected = 0
         self.time_recovered = 0
         self.prev_day = copy(model.day_count)
-        self.day_of_infection = None if seir == SEIR.SUSCEPTIBLE or SEIR.RECOVERED else copy(model.day_count)
+        self.day_of_infection = None if seir == SEIR.SUSCEPTIBLE or seir == SEIR.RECOVERED else copy(model.day_count)
         self.day_of_recovery = None if seir != SEIR.RECOVERED else copy(model.day_count)
         self.seir = seir
         self.type = "Human"
@@ -82,7 +82,7 @@ class HumanAgent(mesa.Agent):
                     self.die()
                     dead = True
         elif self.seir == SEIR.RECOVERED:
-            if random.random() < self.suspectible_probability*(self.model.day_count-self.day_of_recovery):
+            if random.random() < self.susceptible_probability*(self.model.day_count-self.day_of_recovery):
                 self.seir = SEIR.SUSCEPTIBLE
                 self.time_recovered = 0
             else:
