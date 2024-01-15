@@ -99,6 +99,8 @@ class HumanAgent(mesa.Agent):
     def die(self):
         self.model.schedule.remove(self)
         self.model.grid.remove_agent(self)
+        self.model.remove_agent(self)
+
 
     def step(self):
         if self.check_seir():
@@ -188,8 +190,9 @@ class MosquitoAgent(mesa.Agent):
         txt += f" | after bite m={self.seir}, h={human.seir}"
 
     def die(self):
-        self.model.schedule.remove(self)
+        self.model.remove_agent(self)
         self.model.grid.remove_agent(self)
+
 
     def check_life_stage(self):
         dead_or_larvae = False
